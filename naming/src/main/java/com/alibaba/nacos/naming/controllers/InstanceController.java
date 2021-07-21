@@ -38,6 +38,7 @@ import com.alibaba.nacos.naming.misc.SwitchEntry;
 import com.alibaba.nacos.naming.misc.UtilsAndCommons;
 import com.alibaba.nacos.naming.pojo.InstanceOperationInfo;
 import com.alibaba.nacos.naming.pojo.Subscriber;
+import com.alibaba.nacos.naming.push.v1.ClientInfo;
 import com.alibaba.nacos.naming.web.CanDistro;
 import com.alibaba.nacos.naming.web.NamingResourceParser;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -311,7 +312,11 @@ public class InstanceController {
         
         Subscriber subscriber = new Subscriber(clientIP + ":" + udpPort, agent, app, clientIP, namespaceId, serviceName,
                 udpPort, clusters);
-        return getInstanceOperator().listInstance(namespaceId, serviceName, subscriber, clusters, healthyOnly);
+        return getInstanceOperator(isJava08Client(new ClientInfo(agent))).listInstance(namespaceId, serviceName, subscriber, clusters, healthyOnly);
+    }
+    
+    private boolean isJava08Client(ClientInfo clientInfo) {
+        return ClientInfo.ClientType.JAVA08 == clientInfo.type;
     }
     
     /**
@@ -490,6 +495,13 @@ public class InstanceController {
     }
     
     private InstanceOperator getInstanceOperator() {
+        return upgradeJudgement.isUseGrpcFeatures() ? instanceServiceV2 : instanceServiceV1;
+    }
+    
+    private InstanceOperator getInstanceOperator(boolean java08Client) {
+        if (java08Client) {
+            return instanceServiceV1;
+        }
         return upgradeJudgement.isUseGrpcFeatures() ? instanceServiceV2 : instanceServiceV1;
     }
 }
